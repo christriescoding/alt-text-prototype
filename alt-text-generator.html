@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<!--
+  PROTOTYPE ONLY — NOT FOR PRODUCTION USE
+  ========================================
+  This file makes direct Anthropic API calls from the browser using a client-side API key.
+  This approach exposes your API key in the browser and should NEVER be used in a
+  production build. In production, all API calls must be proxied through a secure
+  server-side endpoint where the key is stored as an environment variable and never
+  sent to the client.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Alt-Text Generator — CMS Image Component</title>
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA=="
+    crossorigin="anonymous"
+    referrerpolicy="no-referrer"
+  />
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --ft-pink:       #fff1e5;
+      --ft-claret:     #990f3d;
+      --ft-black:      #1a1a1a;
+      --ft-grey-dark:  #4a4a4a;
+      --ft-grey-mid:   #8a8a8a;
+      --ft-grey-light: #d9d9d9;
+      --ft-paper:      #fff1e5;
+      --ft-amber-bg:   #fde8c8;
+      --ft-amber-bdr:  #e8a052;
+      --ft-teal:       #0d7680;
+      --ft-teal-hover: #0a5f68;
+      --verified-bg:   #f2f9f2;
+      --verified-bdr:  #8ab88a;
+      --white:         #ffffff;
+      --border:        #cccccc;
+      --shadow:        0 2px 8px rgba(0,0,0,0.08);
+      --radius:        3px;
+      --font:          'Georgia', 'Times New Roman', serif;
+      --font-ui:       -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+    }
+
+    body {
+      background: #f4f4f0;
+      font-family: var(--font-ui);
+      color: var(--ft-black);
+      min-height: 100vh;
+      padding: 40px 20px 80px;
+    }
+
+    /* ── Page header ── */
+    .page-header {
+      max-width: 720px;
+      margin: 0 auto 28px;
+    }
+
+    .page-header h1 {
+      font-family: var(--font);
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--ft-black);
+      letter-spacing: -0.3px;
+      margin-bottom: 4px;
+    }
+
+    .page-header p {
+      font-size: 13px;
+      color: var(--ft-grey-mid);
+    }
+
+    .prototype-badge {
+      display: inline-block;
+      background: var(--ft-claret);
+      color: white;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      padding: 2px 7px;
+      border-radius: 2px;
+      margin-left: 8px;
+      vertical-align: middle;
+      position: relative;
+      top: -2px;
+    }
+
+    /* ── API key bar ── */
+    .api-key-bar {
+      max-width: 720px;
+      margin: 0 auto 24px;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: var(--shadow);
+    }
+
+    .api-key-bar label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--ft-grey-dark);
+      white-space: nowrap;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .api-key-bar input {
+      flex: 1;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 7px 10px;
+      font-size: 13px;
+      font-family: 'Courier New', monospace;
+      color: var(--ft-black);
+      background: #fafafa;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .api-key-bar input:focus {
+      border-color: var(--ft-teal);
+      background: var(--white);
+    }
+
+    .api-key-bar input::placeholder {
+      color: var(--ft-grey-light);
+    }
+
+    .api-key-status {
+      font-size: 11px;
+      color: var(--ft-grey-mid);
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .api-key-status.has-key {
+      color: #4a8c4a;
+    }
+
+    /* ── CMS card ── */
+    .cms-card {
+      max-width: 720px;
+      margin: 0 auto;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    /* ── Card header ── */
+    .card-header {
+      background: #f0f0ee;
+      border-bottom: 1px solid var(--border);
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .card-header-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-header h2 {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--ft-black);
+      letter-spacing: 0.1px;
+    }
+
+    .card-header-left i.fa-chevron-up {
+      font-size: 11px;
+      color: var(--ft-grey-mid);
+    }
+
+    .card-header-right {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      color: var(--ft-grey-mid);
+      font-size: 14px;
+    }
+
+    .card-header-right i {
+      cursor: pointer;
+      transition: color 0.15s;
+    }
+
+    .card-header-right i:hover {
+      color: var(--ft-black);
+    }
+
+    /* ── Card body ── */
+    .card-body {
+      padding: 24px;
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 28px;
+    }
+
+    /* ── Left column ── */
+    .left-col {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Caption row */
+    .field-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+    }
+
+    .field-label {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--ft-black);
+      white-space: nowrap;
+      padding-top: 1px;
+      min-width: 52px;
+    }
+
+    .field-value {
+      font-size: 13px;
+      color: var(--ft-grey-mid);
+    }
+
+    /* Image info collapsible row */
+    .image-info-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--ft-black);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .image-info-row i {
+      font-size: 10px;
+      color: var(--ft-grey-mid);
+    }
+
+    .image-info-note {
+      font-size: 12px;
+      font-weight: 400;
+      color: var(--ft-grey-mid);
+    }
+
+    /* Alt field */
+    .alt-field-wrapper {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .alt-label-row {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .alt-label {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--ft-black);
+    }
+
+    .sparkle-icon {
+      color: var(--ft-teal);
+      font-size: 13px;
+      animation: none;
+    }
+
+    .sparkle-icon.spinning {
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .alt-textarea {
+      width: 100%;
+      min-height: 90px;
+      resize: vertical;
+      border: 1px solid var(--ft-amber-bdr);
+      border-radius: var(--radius);
+      padding: 8px 10px;
+      font-family: var(--font-ui);
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--ft-black);
+      background: var(--ft-amber-bg);
+      outline: none;
+      transition: background 0.3s, border-color 0.3s;
+    }
+
+    .alt-textarea:focus {
+      border-color: var(--ft-teal);
+    }
+
+    .alt-textarea.verified {
+      background: var(--white);
+      border-color: var(--verified-bdr);
+    }
+
+    .alt-textarea::placeholder {
+      color: var(--ft-grey-light);
+      font-style: italic;
+    }
+
+    /* Generate button */
+    .generate-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      width: 100%;
+      padding: 9px 14px;
+      background: var(--ft-teal);
+      color: var(--white);
+      border: none;
+      border-radius: var(--radius);
+      font-family: var(--font-ui);
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s, opacity 0.15s;
+      letter-spacing: 0.1px;
+    }
+
+    .generate-btn:hover:not(:disabled) {
+      background: var(--ft-teal-hover);
+    }
+
+    .generate-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .generate-btn .spinner {
+      display: none;
+      width: 13px;
+      height: 13px;
+      border: 2px solid rgba(255,255,255,0.4);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    .generate-btn.loading .spinner {
+      display: inline-block;
+    }
+
+    .generate-btn.loading .btn-icon {
+      display: none;
+    }
+
+    /* AI Content check */
+    .content-check-box {
+      border: 1.5px solid var(--ft-amber-bdr);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      background: #fffaf4;
+      transition: border-color 0.3s, background 0.3s;
+    }
+
+    .content-check-box.verified {
+      border-color: var(--verified-bdr);
+      background: var(--verified-bg);
+    }
+
+    .content-check-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--ft-black);
+      margin-bottom: 10px;
+    }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* Toggle switch */
+    .toggle-switch {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+      position: absolute;
+    }
+
+    .toggle-track {
+      position: absolute;
+      inset: 0;
+      background: #ccc;
+      border-radius: 24px;
+      cursor: pointer;
+      transition: background 0.25s;
+      border: 1.5px solid transparent;
+    }
+
+    .toggle-track::after {
+      content: '';
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      left: 2px;
+      top: 1px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 0.25s;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+    }
+
+    .toggle-switch input:checked + .toggle-track {
+      background: #4a8c4a;
+    }
+
+    .toggle-switch input:checked + .toggle-track::after {
+      transform: translateX(20px);
+    }
+
+    .toggle-label {
+      font-size: 13px;
+      color: var(--ft-grey-dark);
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    .toggle-label.verified-text {
+      color: #4a8c4a;
+      font-weight: 700;
+    }
+
+    /* Credit row */
+    .credit-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Copy button */
+    /* Stacked label + editable field (caption, credit) */
+    .stacked-field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .inline-textarea {
+      width: 100%;
+      resize: none;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 6px 8px;
+      font-family: var(--font-ui);
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--ft-black);
+      background: var(--white);
+      outline: none;
+      transition: border-color 0.15s;
+      overflow: hidden;
+    }
+
+    .inline-textarea:focus {
+      border-color: var(--ft-teal);
+    }
+
+    .inline-textarea::placeholder {
+      color: var(--ft-grey-light);
+      font-style: italic;
+    }
+
+    /* ── Right column — image panels ── */
+    .right-col {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .image-panels {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    .image-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    /* Upload zone */
+    .upload-zone {
+      width: 100%;
+      aspect-ratio: 4/3;
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      background: #fafafa;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .upload-zone:hover,
+    .upload-zone.drag-over {
+      border-color: var(--ft-teal);
+      background: #f0f8f8;
+    }
+
+    .upload-zone.has-image {
+      border: none;
+      background: transparent;
+    }
+
+    .upload-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 10px;
+      text-align: center;
+    }
+
+    .upload-placeholder i {
+      font-size: 22px;
+      color: var(--ft-grey-light);
+    }
+
+    .upload-placeholder span {
+      font-size: 11px;
+      color: var(--ft-grey-mid);
+      line-height: 1.4;
+    }
+
+    .upload-placeholder .formats {
+      font-size: 10px;
+      color: var(--ft-grey-light);
+    }
+
+    .preview-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      border-radius: var(--radius);
+    }
+
+.panel-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .panel-action-icon {
+      color: var(--ft-teal);
+      font-size: 14px;
+      cursor: pointer;
+      transition: color 0.15s;
+    }
+
+    .panel-action-icon:hover {
+      color: var(--ft-teal-hover);
+    }
+
+    /* Hidden file input */
+    #file-input {
+      display: none;
+    }
+
+    /* Error message */
+    .error-msg {
+      font-size: 11px;
+      color: var(--ft-claret);
+      display: none;
+      margin-top: 2px;
+    }
+
+    .error-msg.visible {
+      display: block;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 600px) {
+      .card-body {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Page header -->
+  <div class="page-header">
+    <h1>Image Component <span class="prototype-badge">Prototype</span></h1>
+    <p>AI-powered alt-text generation for editorial images</p>
+  </div>
+
+  <!-- API Key bar -->
+  <div class="api-key-bar">
+    <label for="api-key-input"><i class="fa-solid fa-key"></i>&nbsp; API Key</label>
+    <input
+      type="password"
+      id="api-key-input"
+      placeholder="sk-ant-api03-..."
+      autocomplete="off"
+      spellcheck="false"
+    />
+    <span class="api-key-status" id="api-key-status">
+      <i class="fa-solid fa-circle-xmark"></i> Not set
+    </span>
+  </div>
+
+  <!-- CMS Card -->
+  <div class="cms-card">
+
+    <!-- Card header -->
+    <div class="card-header">
+      <div class="card-header-left">
+        <i class="fa-solid fa-chevron-up"></i>
+        <h2>Image</h2>
+      </div>
+      <div class="card-header-right">
+        <i class="fa-solid fa-grip-dots" title="Drag to reorder"></i>
+        <i class="fa-regular fa-trash-can" title="Remove component"></i>
+      </div>
+    </div>
+
+    <!-- Card body -->
+    <div class="card-body">
+
+      <!-- Left column -->
+      <div class="left-col">
+
+        <!-- Caption -->
+        <div class="stacked-field">
+          <span class="field-label">Caption:</span>
+          <textarea class="inline-textarea" id="caption-value" rows="2" placeholder="Add caption text"></textarea>
+        </div>
+
+        <!-- Credit -->
+        <div class="stacked-field">
+          <span class="field-label">Credit:</span>
+          <textarea class="inline-textarea" id="credit-value" rows="1" placeholder="Add credit text"></textarea>
+        </div>
+
+        <!-- Image info -->
+        <div class="image-info-row">
+          Image Info <span class="image-info-note">(reference only)</span>
+          <i class="fa-solid fa-chevron-down"></i>
+        </div>
+
+        <!-- Alt text field -->
+        <div class="alt-field-wrapper">
+          <div class="alt-label-row">
+            <span class="alt-label">Alt:</span>
+            <i class="fa-solid fa-sparkles sparkle-icon" id="sparkle-icon"></i>
+          </div>
+          <textarea
+            class="alt-textarea"
+            id="alt-textarea"
+            placeholder="Upload an image and click Generate Alt-Text…"
+            rows="4"
+            spellcheck="true"
+          ></textarea>
+          <span class="error-msg" id="error-msg"></span>
+        </div>
+
+        <!-- Generate button -->
+        <button class="generate-btn" id="generate-btn" disabled>
+          <span class="btn-icon">✨</span>
+          <div class="spinner"></div>
+          Generate Alt-Text
+        </button>
+
+        <!-- AI Content check -->
+        <div class="content-check-box" id="content-check-box">
+          <div class="content-check-title">AI Content check</div>
+          <div class="toggle-row">
+            <label class="toggle-switch">
+              <input type="checkbox" id="verified-toggle" />
+              <span class="toggle-track"></span>
+            </label>
+            <span class="toggle-label" id="toggle-label">Unverified</span>
+          </div>
+        </div>
+
+
+      </div><!-- /left-col -->
+
+      <!-- Right column -->
+      <div class="right-col">
+        <div class="image-panels">
+
+          <!-- Panel 1: upload / preview -->
+          <div class="image-panel">
+            <div class="upload-zone" id="upload-zone" title="Click to browse or drag an image here">
+              <div class="upload-placeholder" id="upload-placeholder">
+                <i class="fa-regular fa-image"></i>
+                <span>Drag &amp; drop<br/>or click to browse</span>
+                <span class="formats">JPG · PNG · WebP</span>
+              </div>
+              <img class="preview-img" id="preview-img" src="" alt="" style="display:none;" />
+            </div>
+            <div class="panel-actions">
+              <i class="fa-solid fa-crop panel-action-icon" title="Crop"></i>
+              <i class="fa-regular fa-image panel-action-icon" title="Replace"></i>
+            </div>
+          </div>
+
+</div><!-- /image-panels -->
+      </div><!-- /right-col -->
+
+    </div><!-- /card-body -->
+  </div><!-- /cms-card -->
+
+  <!-- Hidden file input -->
+  <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp" />
+
+  <script>
+    // ─── State ──────────────────────────────────────────────────────────────────
+    let uploadedImageBase64 = null;   // base64 data URL
+    let uploadedImageMime   = null;   // MIME type
+    let apiKey              = '';
+    let isVerified          = false;
+
+    // ─── Element refs ────────────────────────────────────────────────────────────
+    const apiKeyInput      = document.getElementById('api-key-input');
+    const apiKeyStatus     = document.getElementById('api-key-status');
+    const uploadZone       = document.getElementById('upload-zone');
+    const uploadPlaceholder= document.getElementById('upload-placeholder');
+    const previewImg       = document.getElementById('preview-img');
+    const fileInput        = document.getElementById('file-input');
+    const changeBtn        = document.getElementById('change-btn');
+    const generateBtn      = document.getElementById('generate-btn');
+    const altTextarea      = document.getElementById('alt-textarea');
+    const sparkleIcon      = document.getElementById('sparkle-icon');
+    const errorMsg         = document.getElementById('error-msg');
+    const verifiedToggle   = document.getElementById('verified-toggle');
+    const toggleLabel      = document.getElementById('toggle-label');
+    const contentCheckBox  = document.getElementById('content-check-box');
+
+    // ─── API key handling ─────────────────────────────────────────────────────
+    apiKeyInput.addEventListener('input', () => {
+      apiKey = apiKeyInput.value.trim();
+      const hasKey = apiKey.length > 10;
+      apiKeyStatus.innerHTML = hasKey
+        ? '<i class="fa-solid fa-circle-check"></i> Key entered'
+        : '<i class="fa-solid fa-circle-xmark"></i> Not set';
+      apiKeyStatus.className = 'api-key-status' + (hasKey ? ' has-key' : '');
+      updateGenerateBtn();
+    });
+
+    // ─── Upload zone ──────────────────────────────────────────────────────────
+    uploadZone.addEventListener('click', () => fileInput.click());
+
+    uploadZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadZone.classList.add('drag-over');
+    });
+
+    uploadZone.addEventListener('dragleave', () => {
+      uploadZone.classList.remove('drag-over');
+    });
+
+    uploadZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadZone.classList.remove('drag-over');
+      const file = e.dataTransfer.files[0];
+      if (file) handleFile(file);
+    });
+
+    fileInput.addEventListener('change', () => {
+      const file = fileInput.files[0];
+      if (file) handleFile(file);
+      fileInput.value = ''; // reset so same file can be re-selected
+    });
+
+    function handleFile(file) {
+      const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+      if (!allowed.includes(file.type)) {
+        showError('Please upload a JPG, PNG, or WebP image.');
+        return;
+      }
+      hideError();
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        uploadedImageBase64 = e.target.result;
+        uploadedImageMime   = file.type;
+        previewImg.src      = uploadedImageBase64;
+        previewImg.style.display = 'block';
+        uploadPlaceholder.style.display = 'none';
+        uploadZone.classList.add('has-image');
+        // Reset verified state when a new image is loaded
+        resetVerification();
+        updateGenerateBtn();
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // ─── Generate button state ────────────────────────────────────────────────
+    function updateGenerateBtn() {
+      generateBtn.disabled = !(uploadedImageBase64 && apiKey.length > 10);
+    }
+
+    // ─── Alt-text generation ──────────────────────────────────────────────────
+    generateBtn.addEventListener('click', async () => {
+      hideError();
+      setLoading(true);
+
+      // Extract pure base64 from data URL (strip "data:image/...;base64,")
+      const base64Data = uploadedImageBase64.split(',')[1];
+
+      try {
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type':         'application/json',
+            'x-api-key':            apiKey,
+            'anthropic-version':    '2023-06-01',
+            'anthropic-dangerous-direct-browser-access': 'true',
+          },
+          body: JSON.stringify({
+            model: 'claude-opus-4-5',
+            max_tokens: 300,
+            messages: [
+              {
+                role: 'user',
+                content: [
+                  {
+                    type: 'image',
+                    source: {
+                      type:       'base64',
+                      media_type: uploadedImageMime,
+                      data:       base64Data,
+                    },
+                  },
+                  {
+                    type: 'text',
+                    text: 'Generate concise, accurate alt-text for this image suitable for a news editorial website. Focus on who or what is depicted, the setting, and any key visual details. Return only the alt-text string, no preamble or explanation.',
+                  },
+                ],
+              },
+            ],
+          }),
+        });
+
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          const msg = err?.error?.message || `API error ${response.status}`;
+          throw new Error(msg);
+        }
+
+        const data = await response.json();
+        const altText = data?.content?.[0]?.text?.trim() || '';
+
+        if (!altText) throw new Error('No alt-text returned from API.');
+
+        altTextarea.value = altText;
+        resetVerification();
+
+      } catch (err) {
+        showError(err.message || 'Something went wrong. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    function setLoading(loading) {
+      if (loading) {
+        generateBtn.classList.add('loading');
+        generateBtn.disabled = true;
+        sparkleIcon.classList.add('spinning');
+      } else {
+        generateBtn.classList.remove('loading');
+        generateBtn.disabled = !(uploadedImageBase64 && apiKey.length > 10);
+        sparkleIcon.classList.remove('spinning');
+      }
+    }
+
+    // ─── Verification toggle ──────────────────────────────────────────────────
+    verifiedToggle.addEventListener('change', () => {
+      isVerified = verifiedToggle.checked;
+
+      if (isVerified) {
+        toggleLabel.textContent = 'Verified';
+        toggleLabel.classList.add('verified-text');
+        altTextarea.classList.add('verified');
+        contentCheckBox.classList.add('verified');
+      } else {
+        toggleLabel.textContent = 'Unverified';
+        toggleLabel.classList.remove('verified-text');
+        altTextarea.classList.remove('verified');
+        contentCheckBox.classList.remove('verified');
+      }
+    });
+
+    function resetVerification() {
+      isVerified = false;
+      verifiedToggle.checked = false;
+      toggleLabel.textContent = 'Unverified';
+      toggleLabel.classList.remove('verified-text');
+      altTextarea.classList.remove('verified');
+      contentCheckBox.classList.remove('verified');
+    }
+
+    // ─── Error helpers ────────────────────────────────────────────────────────
+    function showError(msg) {
+      errorMsg.textContent = msg;
+      errorMsg.classList.add('visible');
+    }
+
+    function hideError() {
+      errorMsg.textContent = '';
+      errorMsg.classList.remove('visible');
+    }
+  </script>
+
+</body>
+</html>
