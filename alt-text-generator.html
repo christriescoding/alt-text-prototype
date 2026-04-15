@@ -615,6 +615,39 @@
       display: block;
     }
 
+    /* Upload submit button */
+    .upload-submit-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      width: 100%;
+      padding: 7px 12px;
+      background: var(--white);
+      color: var(--ft-grey-mid);
+      border: 1.5px solid var(--ft-grey-light);
+      border-radius: var(--radius);
+      font-family: var(--font-ui);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: not-allowed;
+      opacity: 0.5;
+      transition: background 0.15s, border-color 0.15s, color 0.15s, opacity 0.15s;
+      letter-spacing: 0.1px;
+    }
+
+    .upload-submit-btn:not(:disabled) {
+      color: var(--ft-black);
+      border-color: var(--border);
+      opacity: 1;
+      cursor: pointer;
+    }
+
+    .upload-submit-btn:not(:disabled):hover {
+      background: #f5f5f5;
+      border-color: #aaa;
+    }
+
     /* ── Responsive ── */
     @media (max-width: 600px) {
       .card-body {
@@ -741,6 +774,10 @@
               <i class="fa-solid fa-crop panel-action-icon" title="Crop"></i>
               <i class="fa-regular fa-image panel-action-icon" title="Replace"></i>
             </div>
+            <button class="upload-submit-btn" id="upload-submit-btn" disabled>
+              <i class="fa-solid fa-cloud-arrow-up"></i>
+              Upload
+            </button>
           </div>
 
 </div><!-- /image-panels -->
@@ -774,6 +811,7 @@
     const verifiedToggle   = document.getElementById('verified-toggle');
     const toggleLabel      = document.getElementById('toggle-label');
     const contentCheckBox  = document.getElementById('content-check-box');
+    const uploadSubmitBtn  = document.getElementById('upload-submit-btn');
 
     // ─── API key handling ─────────────────────────────────────────────────────
     apiKeyInput.addEventListener('input', () => {
@@ -922,11 +960,13 @@
         toggleLabel.classList.add('verified-text');
         altTextarea.classList.add('verified');
         contentCheckBox.classList.add('verified');
+        uploadSubmitBtn.disabled = false;
       } else {
         toggleLabel.textContent = 'Unverified';
         toggleLabel.classList.remove('verified-text');
         altTextarea.classList.remove('verified');
         contentCheckBox.classList.remove('verified');
+        uploadSubmitBtn.disabled = true;
       }
     });
 
@@ -937,6 +977,7 @@
       toggleLabel.classList.remove('verified-text');
       altTextarea.classList.remove('verified');
       contentCheckBox.classList.remove('verified');
+      uploadSubmitBtn.disabled = true;
     }
 
     // ─── Error helpers ────────────────────────────────────────────────────────
